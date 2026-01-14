@@ -1,15 +1,22 @@
+# Start with slim Python 3.13 image for smaller size
 FROM python:3.13.11-slim
 
-# Copy uv binary from official uv image (multi-stage build pattern)
+# Copy uv binary from official uv image
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/
 
-WORKDIR /code
-# Add virtual environment to PATH so we can use installed packages
-ENV PATH="/code/.venv/bin:$PATH"
+# Set working directory inside container
+WORKDIR /app
 
-COPY pyproject.toml .python-version uv.lock ./
+# Add virtual environment to PATH
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Copy dependency files first (better caching)
+COPY "pyproject.toml" "uv.lock" ".python-version" ./
+# Install all dependencies (pandas, sqlalchemy, psycopg2)
 RUN uv sync --locked
 
-COPY pipeline.py .
+# Copy ingestion script
+COPY ingest_data.py ingest_data.py 
 
-ENTRYPOINT ["python", "pipeline.py"]
+# Set entry point to run the ingestion script
+ENTRYPOINT [ "python", "ingest_data.py" ]
